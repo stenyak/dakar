@@ -1,0 +1,234 @@
+<html>
+   <head>
+      <title>Box2dWeb Demo</title>
+   </head>
+   <body onload="init();">
+      <canvas id="canvas" width="600" height="400" style="background-color:#333333;" ></canvas>
+   </body>
+   <!--<script type="text/javascript" src="box2dweb/Box2d.min.js"></script>-->
+   <script type="text/javascript" src="box2dweb/Box2D.js"></script>
+   <script type="text/javascript">
+      
+      function init() {
+         var   b2Vec2 = Box2D.Common.Math.b2Vec2
+            ,  b2AABB = Box2D.Collision.b2AABB
+         	,	b2BodyDef = Box2D.Dynamics.b2BodyDef
+         	,	b2Body = Box2D.Dynamics.b2Body
+         	,	b2FixtureDef = Box2D.Dynamics.b2FixtureDef
+         	,	b2Fixture = Box2D.Dynamics.b2Fixture
+         	,	b2World = Box2D.Dynamics.b2World
+         	,	b2MassData = Box2D.Collision.Shapes.b2MassData
+         	,	b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
+         	,	b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
+         	,	b2DebugDraw = Box2D.Dynamics.b2DebugDraw
+            ,  b2MouseJointDef =  Box2D.Dynamics.Joints.b2MouseJointDef
+            ,  b2DistanceJointDef =  Box2D.Dynamics.Joints.b2DistanceJointDef
+            ;
+         
+         var distJoint;
+
+         var world = new b2World(
+               new b2Vec2(0, 10)    //gravity
+            ,  true                 //allow sleep
+         );
+         
+         var fixDef = new b2FixtureDef;
+         fixDef.density = 1.0;
+         fixDef.friction = 0.5;
+         fixDef.restitution = 0.2;
+         
+         var bodyDef = new b2BodyDef;
+         
+         //create ground
+         bodyDef.type = b2Body.b2_staticBody;
+         fixDef.shape = new b2PolygonShape;
+         fixDef.shape.SetAsBox(20, 2);
+         bodyDef.position.Set(10, 400 / 30 + 1.8);
+         world.CreateBody(bodyDef).CreateFixture(fixDef);
+         bodyDef.position.Set(10, -1.8);
+         world.CreateBody(bodyDef).CreateFixture(fixDef);
+         fixDef.shape.SetAsBox(2, 14);
+         bodyDef.position.Set(-1.8, 13);
+         world.CreateBody(bodyDef).CreateFixture(fixDef);
+         bodyDef.position.Set(21.8, 13);
+         world.CreateBody(bodyDef).CreateFixture(fixDef);
+         
+         createVehicle(4, 1.5, 0.5, new b2Vec2(5,5));
+
+         
+         function createVehicle(length, height, wsize, position)
+         {
+             var center = position;
+             //b = createBody(length, height, new b2Vec2(5,5));
+             fwDist = length * 0.80;
+             rwDist = length * 0.85;
+             fwDist = 0;
+             rwDist = 0;
+             wy = center.y + height / 2;
+             var fw = createWheel(wsize, new b2Vec2(center.x + fwDist, wy));
+             var rw = createWheel(wsize, new b2Vec2(center.x - rwDist, wy));
+             var body = createBody(length, height, position);
+         }
+         function createBody(length, height, position)
+         {
+             var result;
+             var bd = new b2BodyDef;
+             bd.type = b2Body.b2_dynamicBody;
+             bd.position = position;
+             result = world.CreateBody(bd);
+
+             var fd = new b2FixtureDef;
+             fd.density = 1.0;
+             fd.friction = 0.5;
+             fd.restitution = 0.2;
+             fd.shape = new b2PolygonShape;
+             fd.shape.SetAsBox(length*2, height*2);
+             result.CreateFixture(fd);
+
+             return result;
+         }
+         function createWheel(size, position)
+         {
+             var result;
+             var bd = new b2BodyDef;
+             bd.type = b2Body.b2_dynamicBody;
+             bd.position = position;
+             result = world.CreateBody(bd);
+
+             var fd = new b2FixtureDef;
+             fd.density = 1.0;
+             fd.friction = 0.5;
+             fd.restitution = 0.2;
+             fd.shape = new b2CircleShape(size*2);
+             result.CreateFixture(fd);
+
+             return result;
+         }
+    
+         //setup debug draw
+         var debugDraw = new b2DebugDraw();
+			debugDraw.SetSprite(document.getElementById("canvas").getContext("2d"));
+			debugDraw.SetDrawScale(30.0);
+			debugDraw.SetFillAlpha(0.5);
+			debugDraw.SetLineThickness(1.0);
+			debugDraw.SetFlags(b2DebugDraw.e_shapeBit | b2DebugDraw.e_jointBit);
+			world.SetDebugDraw(debugDraw);
+         
+         window.setInterval(update, 1000 / 60);
+         
+         //mouse
+         
+         var mouseX, mouseY, mousePVec, isMouseDown, selectedBody, mouseJoint;
+         var canvasPosition = getElementPosition(document.getElementById("canvas"));
+         
+         document.addEventListener("mousedown", function(e) {
+            isMouseDown = true;
+            handleMouseMove(e);
+            document.addEventListener("mousemove", handleMouseMove, true);
+         }, true);
+         
+         document.addEventListener("mouseup", function() {
+            document.removeEventListener("mousemove", handleMouseMove, true);
+            isMouseDown = false;
+            mouseX = undefined;
+            mouseY = undefined;
+         }, true);
+         function handleMouseMove(e) {
+            mouseX = (e.clientX - canvasPosition.x) / 30;
+            mouseY = (e.clientY - canvasPosition.y) / 30;
+         };
+         
+         function getBodyAtMouse() {
+            mousePVec = new b2Vec2(mouseX, mouseY);
+            var aabb = new b2AABB();
+            aabb.lowerBound.Set(mouseX - 0.001, mouseY - 0.001);
+            aabb.upperBound.Set(mouseX + 0.001, mouseY + 0.001);
+            
+            // Query the world for overlapping shapes.
+
+            selectedBody = null;
+            world.QueryAABB(getBodyCB, aabb);
+            return selectedBody;
+         }
+
+         function getBodyCB(fixture) {
+            if(fixture.GetBody().GetType() != b2Body.b2_staticBody) {
+               if(fixture.GetShape().TestPoint(fixture.GetBody().GetTransform(), mousePVec)) {
+                  selectedBody = fixture.GetBody();
+                  return false;
+               }
+            }
+            return true;
+         }
+         
+         //update
+         
+         function createDistJoint(body1, body2)
+         {
+            var jd = new b2DistanceJointDef();
+            //jd.dampingRatio = 5;
+            //jd.frequencyHz = 10;
+            jd.Initialize(body1, body2, body1.GetPosition(),body2.GetPosition());
+            jd.collideConnected = true;
+            distJoint = world.CreateJoint(jd);
+         }
+         function update() {
+         
+            if(isMouseDown && (!mouseJoint)) {
+               var body = getBodyAtMouse();
+               if(body) {
+                  var md = new b2MouseJointDef();
+                  md.bodyA = world.GetGroundBody();
+                  md.bodyB = body;
+                  md.target.Set(mouseX, mouseY);
+                  md.collideConnected = true;
+                  md.maxForce = 300.0 * body.GetMass();
+                  mouseJoint = world.CreateJoint(md);
+                  body.SetAwake(true);
+               }
+            }
+            
+            if(mouseJoint) {
+               if(isMouseDown) {
+                  mouseJoint.SetTarget(new b2Vec2(mouseX, mouseY));
+               } else {
+                  world.DestroyJoint(mouseJoint);
+                  mouseJoint = null;
+               }
+            }
+         
+            world.Step(1 / 60, 10, 10);
+            world.DrawDebugData();
+            world.ClearForces();
+         };
+         
+         //helpers
+         
+         //http://js-tut.aardon.de/js-tut/tutorial/position.html
+         function getElementPosition(element) {
+            var elem=element, tagname="", x=0, y=0;
+           
+            while((typeof(elem) == "object") && (typeof(elem.tagName) != "undefined")) {
+               y += elem.offsetTop;
+               x += elem.offsetLeft;
+               tagname = elem.tagName.toUpperCase();
+
+               if(tagname == "BODY")
+                  elem=0;
+
+               if(typeof(elem) == "object") {
+                  if(typeof(elem.offsetParent) == "object")
+                     elem = elem.offsetParent;
+               }
+            }
+
+            return {x: x, y: y};
+         }
+
+
+      };
+   
+   </script>
+   
+   
+</html>
