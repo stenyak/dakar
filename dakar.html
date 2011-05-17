@@ -94,7 +94,7 @@
            var v = {};
 
            var sepx = length/2;
-           var wheelsep = 0.5;
+           var wheelsep = 2.5;
 
            v.fh = createCircle(posx+sepx, posy+(height/2)+radius+wheelsep, radius/5, 10/10);
            v.fw = createCircle(posx+sepx, posy+(height/2)+radius+wheelsep, radius, 10);
@@ -116,14 +116,14 @@
            var jd = new b2PrismaticJointDef();
            jd.enableLimit = false;
            jd.enableMotor = false;
-           //jd.localAnchorA = new b2Vec2(0,0);
-           //jd.localAnchorB = new b2Vec2(0,0);
-           //jd.localAxisA = new b2Vec2(0,1);
            var axis = new b2Vec2();
-           axis.x = body.GetPosition().x - hub.GetPosition().x;
-           axis.y = body.GetPosition().y - hub.GetPosition().y;
-           //jd.lowerTranslation = 0;
-           //jd.upperTranslation = 1;
+           axis.x = hub.GetPosition().x - body.GetPosition().x;
+           axis.y = hub.GetPosition().y - body.GetPosition().y;
+           /*
+           jd.enableLimit = true;
+           jd.lowerTranslation = -10;
+           jd.upperTranslation = +10;
+           */
            jd.Initialize(body, hub, body.GetPosition(), axis);
            jd.collideConnected = false;
            var j = world.CreateJoint(jd);
