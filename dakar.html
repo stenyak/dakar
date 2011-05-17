@@ -25,6 +25,7 @@
            ,  b2DistanceJointDef =  Box2D.Dynamics.Joints.b2DistanceJointDef
            ,  b2RevoluteJointDef =  Box2D.Dynamics.Joints.b2RevoluteJointDef
            ,  b2WeldJointDef = Box2D.Dynamics.Joints.b2WeldJointDef
+           ,  b2PrismaticJointDef = Box2D.Dynamics.Joints.b2PrismaticJointDef
            ;
 
        var world = new b2World(
@@ -36,12 +37,14 @@
 
        var width = 600;
        var height = 400;
-       createGround(width/30, height/30, 0.2);
-       createVehicle(3, 1.5, 0.5, 5,5);
        for (var i=0; i<10; i++)
        {
            //checkPos(i,i);
        }
+
+       createGround(width/30, height/30, 0.2);
+       var vehicle = createVehicle(3, 1.5, 0.5, 5,5);
+
        function createGround(sizex, sizey, border)
        {
             createBox(0,0,sizex,border);
@@ -49,7 +52,6 @@
             createBox(0,0,border,sizey);
             createBox(sizex-border,0,sizex,sizey);
        }
-
        function createBox(originx, originy, endx, endy)
        {
 
@@ -89,20 +91,43 @@
 
        function createVehicle(length, height, radius, posx, posy)
        {
+           var v = {};
+
            var sepx = length/2;
            var wheelsep = 0.5;
 
-           var fh = createCircle(posx+sepx, posy+(height/2)+radius+wheelsep, radius/5, 10/10);
-           var fw = createCircle(posx+sepx, posy+(height/2)+radius+wheelsep, radius, 10);
-           attachAxisBody(fh, fw);
+           v.fh = createCircle(posx+sepx, posy+(height/2)+radius+wheelsep, radius/5, 10/10);
+           v.fw = createCircle(posx+sepx, posy+(height/2)+radius+wheelsep, radius, 10);
+           attachAxisBody(v.fh, v.fw, false);
 
-           var rh = createCircle(posx-sepx, posy+(height/2)+radius+wheelsep, radius/5, 10/10);
-           var rw = createCircle(posx-sepx, posy+(height/2)+radius+wheelsep, radius, 10);
-           attachAxisBody(rh, rw);
+           v.rh = createCircle(posx-sepx, posy+(height/2)+radius+wheelsep, radius/5, 10/10);
+           v.rw = createCircle(posx-sepx, posy+(height/2)+radius+wheelsep, radius, 10);
+           v.engine = attachAxisBody(v.rh, v.rw, true);
+           v.engine.SetMotorSpeed(10);
 
-           var body = createBody(length, height, posx, posy, 10);
-           attachBodyBody(body, rh);
-           attachBodyBody(body, fh);
+           v.body = createBody(length, height, posx, posy, 10);
+           v.rs = attachBodyHub(v.body, v.rh);
+           v.fs = attachBodyHub(v.body, v.fh);
+
+           return v;
+       }
+       function attachBodyHub(body, hub)
+       {
+           var jd = new b2PrismaticJointDef();
+           jd.enableLimit = false;
+           jd.enableMotor = false;
+           //jd.localAnchorA = new b2Vec2(0,0);
+           //jd.localAnchorB = new b2Vec2(0,0);
+           //jd.localAxisA = new b2Vec2(0,1);
+           var axis = new b2Vec2();
+           axis.x = body.GetPosition().x - hub.GetPosition().x;
+           axis.y = body.GetPosition().y - hub.GetPosition().y;
+           //jd.lowerTranslation = 0;
+           //jd.upperTranslation = 1;
+           jd.Initialize(body, hub, body.GetPosition(), axis);
+           jd.collideConnected = false;
+           var j = world.CreateJoint(jd);
+           return j;
        }
        function attachBodyBody(body1, body2)
        {
@@ -112,17 +137,24 @@
            jd.Initialize(body1, body2, body1.GetPosition());
            jd.collideConnected = false;
            var j = world.CreateJoint(jd);
+           return j;
        }
-       function attachAxisBody(body1, body2)
+       function attachAxisBody(body1, body2, engine)
        {
            var jd = new b2RevoluteJointDef();
            jd.enableLimit = false;
-           jd.enableMotor = false;
+           jd.enableMotor = engine;
+           if (engine)
+           {
+                jd.motorSpeed = 0;
+                jd.maxMotorTorque = 100;
+           }
            jd.localAnchorA = new b2Vec2(0,0);
            jd.localAnchorB = new b2Vec2(0,0);
            jd.Initialize(body1, body2, body1.GetPosition());
            jd.collideConnected = false;
            var j = world.CreateJoint(jd);
+           return j;
        }
        function createBody(length, height, posx, posy, mass)
        {
