@@ -26,8 +26,12 @@ function init()
 
     var size = getViewSize();
 
-    var width = size.w * 0.95;
-    var height = size.h * 0.95;
+    var width = size.w; - 32;
+    var height = size.h; - 32;
+    if (width > 1000) width = 1000;
+    if (height > 600) height = 600;
+    width -= 32;
+    height -= 32;
     //width = 220;
     //height = 290;
     document.getElementById("canvas").height = height;
@@ -37,19 +41,59 @@ function init()
         //checkPos(i,i);
     }
 
-    createGround(width/30, height/30, 0.2);
-    var vehicle = createVehicle(3, 1.5, 0.5, 5,5);
-
+    var worldsize = {};
+    worldsize.x = width/30;
+    worldsize.y = height/30;
+    createGround(worldsize.x, worldsize.y, 0.2);
+    var vehicle = createVehicle(4, 0.8, 0.8, 3.5,5, 5);
     function createGround(sizex, sizey, border)
     {
         createBox(0,0,sizex,border);
         createBox(0,sizey-border, sizex,sizey);
         createBox(0,0,border,sizey);
         createBox(sizex-border,0,sizex,sizey);
+
+        var oldx = border;
+        var oldy = sizey-border -(1+Math.random()*6);
+        var newx;
+        var newy;
+        while (oldx < sizex-border)
+        {
+            var xvariation = 0.3;
+            var yvariation = 0.7;
+            var width = xvariation + Math.random() * xvariation;
+            var height = -(yvariation/2)+ Math.random() * (yvariation);
+
+            newx = oldx + width;
+            if (newx > sizex-border) newx = sizex-border;
+            newy = oldy + height;
+            if (newy > sizey-border) newy = sizey-border;
+
+            createEdge(oldx, oldy, newx, newy);
+            oldx = newx;
+            oldy = newy;
+        }
+    }
+    function createEdge(vecax, vecay, vecbx, vecby)
+    {
+        veca = new b2Vec2(vecax, vecay);
+        vecb = new b2Vec2(vecbx, vecby);
+
+        var fixDef = new b2FixtureDef;
+        fixDef.density = 1.0;
+        fixDef.friction = 1.0;
+        fixDef.restitution = 0.0;
+        fixDef.shape = new b2PolygonShape;
+
+        var bodyDef = new b2BodyDef;
+        bodyDef.type = b2Body.b2_staticBody;
+
+        fixDef.shape.SetAsEdge(veca, vecb);
+        bodyDef.position.Set(0,0);
+        world.CreateBody(bodyDef).CreateFixture(fixDef);
     }
     function createBox(originx, originy, endx, endy)
     {
-
         sizeX = (endx - originx)/2;
         sizeY = (endy - originy)/2;
         posX = originx + sizeX;
@@ -84,29 +128,31 @@ function init()
         return result;
     }
 
-    function createVehicle(length, height, radius, posx, posy)
+    function createVehicle(length, height, radius, posx, posy, speed)
     {
         var v = {};
 
         var sepx = length/2;
-        var fwheelsep = 1;
-        var rwheelsep = 0.5;
+        var fwheelsep = 0.2;
+        var rwheelsep = 0.2;
         var hubradius = radius/5;
-        var wheelmass = 10;
+        var bodymass = 500;
+        var wheelmass = bodymass/10;
         var hubmass = wheelmass/10;
 
         v.fh = createCircle(posx+sepx, posy+(height/2)+radius+fwheelsep, hubradius, hubmass);
         v.fw = createCircle(posx+sepx, posy+(height/2)+radius+fwheelsep, radius, wheelmass);
-        attachAxisBody(v.fh, v.fw, false);
+        attachAxisBody(v.fh, v.fw, 0);
 
         v.rh = createCircle(posx-sepx, posy+(height/2)+radius+rwheelsep, hubradius, hubmass);
         v.rw = createCircle(posx-sepx, posy+(height/2)+radius+rwheelsep, radius, wheelmass);
-        v.engine = attachAxisBody(v.rh, v.rw, true);
-        v.engine.SetMotorSpeed(10);
+        v.maxspeed = speed;
+        v.torque = speed * 500;
+        v.engine = attachAxisBody(v.rh, v.rw, v.torque);
 
-        v.body = createBody(length, height, posx, posy, 10);
-        v.fs = attachBodyHub(v.body, v.fh, 70, fwheelsep, 2, 0.8);
-        v.rs = attachBodyHub(v.body, v.rh, -90, rwheelsep, 4, 0.6);
+        v.body = createBody(length, height, posx, posy, bodymass);
+        v.fs = attachBodyHub(v.body, v.fh, 60, fwheelsep, 6, 10);
+        v.rs = attachBodyHub(v.body, v.rh, -80, rwheelsep, 8, 7);
 
         return v;
     }
@@ -150,15 +196,15 @@ function init()
         var j = world.CreateJoint(jd);
         return j;
     }
-    function attachAxisBody(body1, body2, engine)
+    function attachAxisBody(body1, body2, torque)
     {
         var jd = new b2RevoluteJointDef();
         jd.enableLimit = false;
-        jd.enableMotor = engine;
-        if (engine)
+        jd.enableMotor = torque > 0;
+        if (jd.enableMotor)
         {
             jd.motorSpeed = 0;
-            jd.maxMotorTorque = 100;
+            jd.maxMotorTorque = torque;
         }
         jd.localAnchorA = new b2Vec2(0,0);
         jd.localAnchorB = new b2Vec2(0,0);
@@ -176,8 +222,8 @@ function init()
         result = world.CreateBody(bd);
 
         var fd = new b2FixtureDef;
-        fd.friction = 0.5;
-        fd.restitution = 0.2;
+        fd.friction = 0.6;
+        fd.restitution = 0.1;
         fd.shape = new b2PolygonShape;
         fd.shape.SetAsBox(length/2, height/2);
         result.CreateFixture(fd);
@@ -198,8 +244,8 @@ function init()
         result = world.CreateBody(bd);
 
         var fd = new b2FixtureDef;
-        fd.friction = 0.5;
-        fd.restitution = 0.2;
+        fd.friction = 1.9;
+        fd.restitution = 0.3;
         fd.shape = new b2CircleShape(radius);
         result.CreateFixture(fd);
         var massdata = new b2MassData;
@@ -223,13 +269,13 @@ function init()
     //update
     var date = new Date();
     var virtualClock = date.getTime();
-    var physicsRate = 50;
+    var physicsRate = 400;
     var graphicsRate = 25;
-    var simDuration = 50;
+    var simDuration = 0;
     world.DrawDebugData();
     //return;
     var id = window.setInterval(update, 1000 / graphicsRate);
-    setTimeout("clearInterval("+id+")",simDuration*1000);
+    if (simDuration > 0) setTimeout("clearInterval("+id+")",simDuration*1000);
 
     //mouse
 
@@ -284,6 +330,14 @@ function init()
     }
     function stepPhysics(seconds, render)
     {
+            if (vehicle.body.GetPosition().x > worldsize.x*0.85)
+            {
+                vehicle.engine.SetMotorSpeed(-vehicle.maxspeed);
+            }
+            if (vehicle.body.GetPosition().x < worldsize.x*0.15)
+            {
+                vehicle.engine.SetMotorSpeed(vehicle.maxspeed);
+            }
             world.Step(seconds, 10, 10);
 
             if (render)
