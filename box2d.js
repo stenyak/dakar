@@ -5970,11 +5970,13 @@ Box2D.postDefs = [];
          body.m_torque = 0.0;
       }
    }
-   b2World.prototype.DrawDebugData = function () {
+   b2World.prototype.DrawDebugData = function (offsetx, offsety) {
       if (this.m_debugDraw == null) {
          return;
       }
       this.m_debugDraw.m_sprite.graphics.clear();
+      this.m_debugDraw.m_ctx.save();
+      this.m_debugDraw.m_ctx.translate(offsetx * this.m_debugDraw.m_drawScale, offsety * this.m_debugDraw.m_drawScale);
       var flags = this.m_debugDraw.GetFlags();
       var i = 0;
       var b;
@@ -6069,6 +6071,7 @@ Box2D.postDefs = [];
             this.m_debugDraw.DrawTransform(xf);
          }
       }
+      this.m_debugDraw.m_ctx.restore();
    }
    b2World.prototype.QueryAABB = function (callback, aabb) {
       var __this = this;

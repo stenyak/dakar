@@ -4,9 +4,15 @@
       <meta name="viewport" content="width=device-width">
    </head>
    <body onload="init();">
+      <div>Speed: <div style="display: inline" id="speed"></div> kmh</div>
+      <div>Height: <div style="display: inline" id="height"></div> meters</div>
+      <div>Distance: <div style="display: inline" id="distance"></div> meters</div>
+      <div>Engine torque: <div style="display: inline" id="torque"></div> n/m??</div>
+      <div>Log: <div style="display: inline" id="log"></div></div>
       <canvas id="canvas" width="50" height="50" style="background-color:#333333;" ></canvas>
    </body>
    <script type="text/javascript" src="box2d.js"></script>
+   <script type="text/javascript" src="seedrandom.js"></script>
    <!--<script type="text/javascript" src="Box2dmin.js"></script>-->
    <script type="text/javascript" src="dakar.js"></script>
 </script>

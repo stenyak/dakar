@@ -1,81 +1,328 @@
 function init()
 {
-    var   b2Vec2 = Box2D.Common.Math.b2Vec2
-        ,  b2AABB = Box2D.Collision.b2AABB
-        ,	b2BodyDef = Box2D.Dynamics.b2BodyDef
-        ,	b2Body = Box2D.Dynamics.b2Body
-        ,	b2FixtureDef = Box2D.Dynamics.b2FixtureDef
-        ,	b2Fixture = Box2D.Dynamics.b2Fixture
-        ,	b2World = Box2D.Dynamics.b2World
-        ,	b2MassData = Box2D.Collision.Shapes.b2MassData
-        ,	b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
-        ,	b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
-        ,	b2DebugDraw = Box2D.Dynamics.b2DebugDraw
-        ,  b2MouseJointDef =  Box2D.Dynamics.Joints.b2MouseJointDef
-        ,  b2DistanceJointDef =  Box2D.Dynamics.Joints.b2DistanceJointDef
-        ,  b2RevoluteJointDef =  Box2D.Dynamics.Joints.b2RevoluteJointDef
-        ,  b2WeldJointDef = Box2D.Dynamics.Joints.b2WeldJointDef
-        ,  b2PrismaticJointDef = Box2D.Dynamics.Joints.b2PrismaticJointDef
-        ;
-
-    var world = new b2World(
-            new b2Vec2(0, 9.8)    //gravity
-            ,  true                 //allow sleep
-            );
-
-
-    var size = getViewSize();
-
-    var width = size.w; - 32;
-    var height = size.h; - 32;
-    if (width > 1000) width = 1000;
-    if (height > 600) height = 600;
-    width -= 32;
-    height -= 32;
-    //width = 220;
-    //height = 290;
-    document.getElementById("canvas").height = height;
-    document.getElementById("canvas").width =  width;
-    for (var i=0; i<10; i++)
+    function handleMouseMove(e)
     {
-        //checkPos(i,i);
+        mouseX = (e.clientX - canvasPosition.x) / 30;
+        mouseY = (e.clientY - canvasPosition.y) / 30;
+    };
+    var keyEnum = { left:0, down:1, up:2, right:3 };
+    var keyArray = new Array(4);
+    function handleKeyDown(e)
+    {
+        var key = e.keyCode;
+        // Detect which key was pressed
+        if(key == 37) keyArray[keyEnum.left] = true;
+        if(key == 40) keyArray[keyEnum.down] = true;
+        if(key == 38) keyArray[keyEnum.up] = true;
+        if(key == 39) keyArray[keyEnum.right] = true;
+
+        var text = "";
+        if (keyArray[keyEnum.left] == true) text += "< ";
+        if (keyArray[keyEnum.right] == true) text += "> ";
+        if (keyArray[keyEnum.up] == true) text += "^ ";
+        if (keyArray[keyEnum.down] == true) text += "v ";
+        document.getElementById("log").innerHTML = text;
+    }
+    function handleKeyUp(e)
+    {
+        var key = e.keyCode;
+        // Detect which key was pressed
+        if(key == 37) keyArray[keyEnum.left] = false;
+        if(key == 40) keyArray[keyEnum.down] = false;
+        if(key == 38) keyArray[keyEnum.up] = false;
+        if(key == 39) keyArray[keyEnum.right] = false;
+
+        var text = "";
+        if (keyArray[keyEnum.left] == true) text += "< ";
+        if (keyArray[keyEnum.right] == true) text += "> ";
+        if (keyArray[keyEnum.up] == true) text += "^ ";
+        if (keyArray[keyEnum.down] == true) text += "v ";
+        document.getElementById("log").innerHTML = text;
     }
 
-    var worldsize = {};
-    worldsize.x = width/30;
-    worldsize.y = height/30;
-    createGround(worldsize.x, worldsize.y, 0.2);
-    var vehicle = createVehicle(4, 0.8, 0.8, 3.5,5, 5);
-    function createGround(sizex, sizey, border)
+    function onKeyUp()
     {
-        createBox(0,0,sizex,border);
-        createBox(0,sizey-border, sizex,sizey);
-        createBox(0,0,border,sizey);
-        createBox(sizex-border,0,sizex,sizey);
+        // Detect which key was released
+        if( key == 'w' )
+            keyArray[keyEnum.W_Key] = false;
+        // Repeat for each key you care about...
+    }
 
-        var oldx = border;
-        var oldy = sizey-border -(1+Math.random()*6);
-        var newx;
-        var newy;
-        while (oldx < sizex-border)
+    function isKeyDown(key)
+    {
+        return keyArray[key];
+    }
+
+    function getBodyAtMouse()
+    {
+        mousePVec = new b2Vec2(mouseX, mouseY);
+        var aabb = new b2AABB();
+        aabb.lowerBound.Set(mouseX - 0.001, mouseY - 0.001);
+        aabb.upperBound.Set(mouseX + 0.001, mouseY + 0.001);
+
+        // Query the world for overlapping shapes.
+        selectedBody = null;
+        world.QueryAABB(getBodyCB, aabb);
+        return selectedBody;
+    };
+    function getBodyCB(fixture)
+    {
+        if(fixture.GetBody().GetType() != b2Body.b2_staticBody)
         {
-            var xvariation = 0.3;
-            var yvariation = 0.7;
-            var width = xvariation + Math.random() * xvariation;
-            var height = -(yvariation/2)+ Math.random() * (yvariation);
-
-            newx = oldx + width;
-            if (newx > sizex-border) newx = sizex-border;
-            newy = oldy + height;
-            if (newy > sizey-border) newy = sizey-border;
-
-            createEdge(oldx, oldy, newx, newy);
-            oldx = newx;
-            oldy = newy;
+            if(fixture.GetShape().TestPoint(fixture.GetBody().GetTransform(), mousePVec))
+            {
+                selectedBody = fixture.GetBody();
+                return false;
+            }
         }
+        return true;
+    };
+    function stepPhysics(seconds, render)
+    {
+            updateChunks();
+            world.Step(seconds, 10, 10);
+            if (keyArray[keyEnum.right] == true)
+            {
+                vehicle.engine.EnableMotor(true);
+                vehicle.engine.SetMotorSpeed(vehicle.maxspeed);
+            }
+            else
+            {
+                vehicle.engine.SetMotorSpeed(0);
+                vehicle.engine.EnableMotor(false);
+            }
+            if (keyArray[keyEnum.left] == true)
+            {
+                vehicle.engine.SetMotorSpeed(0);
+                vehicle.engine.EnableMotor(true);
+            }
+            if (render)
+            {
+                var size = getRenderSize();
+                var scale = debugDraw.GetDrawScale();
+                size.w /= scale;
+                size.h /= scale;
+                posx = (-vehicle.body.GetPosition().x) + (size.w/2);
+                posy = (-vehicle.body.GetPosition().y) + (size.h/2);
+                world.DrawDebugData(posx, posy);
+                document.getElementById("speed").innerHTML = Math.round(vehicle.body.GetLinearVelocity().x * 3.6);
+                document.getElementById("height").innerHTML = Math.round(-vehicle.body.GetPosition().y);
+                document.getElementById("distance").innerHTML = Math.round(vehicle.body.GetPosition().x);
+                document.getElementById("torque").innerHTML = Math.round(vehicle.engine.GetMotorTorque());
+            }
+            world.ClearForces();
+    };
+    var updating = false;
+    function update()
+    {
+        if (updating)
+            return;
+        else updating = true;
+        var date = new Date();
+        var wallClock = date.getTime();
+
+        if(isMouseDown && (!mouseJoint))
+        {
+            var body = getBodyAtMouse();
+            if(body)
+            {
+                var md = new b2MouseJointDef();
+                md.bodyA = world.GetGroundBody();
+                md.bodyB = body;
+                md.target.Set(mouseX, mouseY);
+                md.collideConnected = true;
+                md.maxForce = 300.0 * body.GetMass();
+                mouseJoint = world.CreateJoint(md);
+                body.SetAwake(true);
+            }
+        }
+        if(mouseJoint)
+        {
+            if(isMouseDown)
+            {
+                mouseJoint.SetTarget(new b2Vec2(mouseX, mouseY));
+            }
+            else
+            {
+                world.DestroyJoint(mouseJoint);
+                mouseJoint = null;
+            }
+        }
+        var drawn = false;
+        while (wallClock > virtualClock)
+        {
+            stepPhysics(1./physicsRate, !drawn)
+            virtualClock += 1000 / physicsRate;
+            if (!drawn) drawn = true;
+        }
+        updating = false;
+    };
+    function getViewSize()
+    {
+        var viewportwidth;
+        var viewportheight;
+        // the more standards compliant browsers (mozilla/netscape/opera/IE7) use window.innerWidth and window.innerHeight
+
+        if (typeof window.innerWidth != 'undefined')
+        {
+            viewportwidth = window.innerWidth, viewportheight = window.innerHeight
+        }
+
+
+        else if (typeof document.documentElement != 'undefined'
+                && typeof document.documentElement.clientWidth !=
+                'undefined' && document.documentElement.clientWidth != 0)
+        {
+            // IE6 in standards compliant mode (i.e. with a valid doctype as the first line in the document)
+            viewportwidth = document.documentElement.clientWidth,
+            viewportheight = document.documentElement.clientHeight
+        }
+        else
+        {
+            // older versions of IE
+            viewportwidth = document.getElementsByTagName('body')[0].clientWidth,
+            viewportheight = document.getElementsByTagName('body')[0].clientHeight
+        }
+        return {w: viewportwidth, h:viewportheight};
+    };
+    //http://js-tut.aardon.de/js-tut/tutorial/position.html
+    function getElementPosition(element)
+    {
+        var elem=element, tagname="", x=0, y=0;
+
+        while((typeof(elem) == "object") && (typeof(elem.tagName) != "undefined"))
+        {
+            y += elem.offsetTop;
+            x += elem.offsetLeft;
+            tagname = elem.tagName.toUpperCase();
+
+            if(tagname == "BODY")
+                elem=0;
+
+            if(typeof(elem) == "object")
+            {
+                if(typeof(elem.offsetParent) == "object")
+                    elem = elem.offsetParent;
+            }
+        }
+
+        return {x: x, y: y};
+    };
+    function getRenderSize()
+    {
+        var size = getViewSize();
+        var width = size.w; - 32;
+        var height = size.h; - 32;
+        if (width > 1000) width = 1000;
+        if (height > 600) height = 600;
+        width -= 32;
+        height -= 32;
+        return {w: width, h:height};
+    };
+    function getWorldSize()
+    {
+        var result = getViewSize();
+        result.w /= 30;
+        result.h /= 30;
+        return result;
+    };
+    function createRocks (nrocks, size, mass, worldx, worldy)
+    {
+        while (nrocks > 0)
+        {
+            createBody(size, size, Math.random()*worldx, worldy, size );
+            nrocks -= 1;
+        }
+    };
+    function getLastChunk()
+    {
+        return chunks[chunks.length-1];
     }
+    function addChunk()
+    {
+        var chunkSize = getChunkSize();
+        var lastChunk = getLastChunk();
+        var chunk = createGroundSimple(lastChunk.endx, lastChunk.endx+chunkSize, lastChunk.endy, lastChunk.endangle);
+        chunks.push(chunk);
+    }
+    function updateChunks()
+    {
+        var chunkSize = getChunkSize();
+        var curx = vehicle.body.GetPosition().x;
+        //console.log("Checking chunks: curx = "+curx);
+        
+        while ( curx > getLastChunk().initx )
+        {
+            //console.log("Adding chunk due to vehicle position")
+            addChunk();
+        }
+        while (chunks.length > 3)
+        {
+            //console.log("Removing chunk due to excess")
+            var chunk = chunks.shift();
+            while (chunk.edges.length > 0)
+            {
+                var edge = chunk.edges.shift();
+                world.DestroyBody(edge.body);
+                //world.DestroyFixture(edge.fixture);
+            }
+        }
+        while (chunks.length < 3)
+        {
+            //console.log("Adding chunk due to lack of chunks")
+            addChunk();
+        }
+    };
+    function getnewangle(oldangle, seed)
+    {
+        var result = 0;
+        Math.seedrandom(seed+2);
+        var maxanglediff = 5;
+        var anglediff = -( (Math.random() - 0.5) * 2)* maxanglediff; //up to +/- maxanglediff degrees in difference
+        result = oldangle + anglediff;
+        var maxangle = 30; //limit to 30 degrees up or 30 down
+        if (result > maxangle) result = maxangle;
+        if (result < -maxangle) result = -maxangle;
+        return result;
+    };
+    function getstepy(stepx, angle)
+    {
+        var result = 0;
+        var rads = angle * (Math.PI / 180);
+        result = Math.sin(rads) * stepx;
+        return result;
+    };
+    function createGroundSimple(initx, endx, inity, initangle)
+    {
+        var x = initx;
+        var y = inity;
+        var angle = initangle;
+        var stepx = (endx - initx) / 100.;
+        var edges = new Array();
+        while (x < endx)
+        {
+            var seed = x;
+            angle = getnewangle(angle, seed);
+            var stepy = getstepy(stepx, angle);
+            var edge = createEdge(x, y, x+stepx, y+stepy);
+            edges.push(edge);
+            x += stepx;
+            y += stepy;
+        }
+
+        var result = {
+            'initx': initx,
+            'endx': x,
+            'endy': y,
+            'endangle': angle,
+            'edges': edges
+        };
+        return result;
+
+    };
     function createEdge(vecax, vecay, vecbx, vecby)
     {
+        var result;
         veca = new b2Vec2(vecax, vecay);
         vecb = new b2Vec2(vecbx, vecby);
 
@@ -90,8 +337,11 @@ function init()
 
         fixDef.shape.SetAsEdge(veca, vecb);
         bodyDef.position.Set(0,0);
-        world.CreateBody(bodyDef).CreateFixture(fixDef);
-    }
+        var body = world.CreateBody(bodyDef);
+        var fixture = body.CreateFixture(fixDef);
+
+        return { 'body': body, 'fixture': fixture };
+    };
     function createBox(originx, originy, endx, endy)
     {
         sizeX = (endx - originx)/2;
@@ -111,7 +361,7 @@ function init()
         fixDef.shape.SetAsBox(sizeX, sizeY);
         bodyDef.position.Set(posX, posY);
         world.CreateBody(bodyDef).CreateFixture(fixDef);
-    }
+    };
     function checkPos(x, y)
     {
         var result;
@@ -126,13 +376,12 @@ function init()
         result.CreateFixture(fd);
 
         return result;
-    }
-
+    };
     function createVehicle(length, height, radius, posx, posy, speed)
     {
         var v = {};
 
-        var sepx = length/2;
+        var sepx = length/1.3;
         var fwheelsep = 0.2;
         var rwheelsep = 0.2;
         var hubradius = radius/5;
@@ -140,22 +389,23 @@ function init()
         var wheelmass = bodymass/10;
         var hubmass = wheelmass/10;
 
-        v.fh = createCircle(posx+sepx, posy+(height/2)+radius+fwheelsep, hubradius, hubmass);
-        v.fw = createCircle(posx+sepx, posy+(height/2)+radius+fwheelsep, radius, wheelmass);
+        v.fh = createCircle(posx+sepx, posy+(height/2), hubradius, hubmass);
+        v.fw = createCircle(posx+sepx, posy+(height/2), radius, wheelmass);
         attachAxisBody(v.fh, v.fw, 0);
 
-        v.rh = createCircle(posx-sepx, posy+(height/2)+radius+rwheelsep, hubradius, hubmass);
-        v.rw = createCircle(posx-sepx, posy+(height/2)+radius+rwheelsep, radius, wheelmass);
+        v.rh = createCircle(posx-sepx, posy+(height/2), hubradius, hubmass);
+        v.rw = createCircle(posx-sepx, posy+(height/2), radius, wheelmass);
         v.maxspeed = speed;
-        v.torque = speed * 500;
+        //v.torque = Math.max(speed * 300, 1500);
+        v.torque = 1850;
         v.engine = attachAxisBody(v.rh, v.rw, v.torque);
 
         v.body = createBody(length, height, posx, posy, bodymass);
-        v.fs = attachBodyHub(v.body, v.fh, 60, fwheelsep, 6, 10);
-        v.rs = attachBodyHub(v.body, v.rh, -80, rwheelsep, 8, 7);
+        v.fs = attachBodyHub(v.body, v.fh, 60, fwheelsep, 15, 6);
+        v.rs = attachBodyHub(v.body, v.rh, -80, rwheelsep, 20, 8);
 
         return v;
-    }
+    };
     function attachBodyHub(body, hub, angle, length, k, c)
     {
         var length = 3;
@@ -185,7 +435,7 @@ function init()
         j = world.CreateJoint(jd); // spring
 
         return j;
-    }
+    };
     function attachBodyBody(body1, body2)
     {
         var jd = new b2WeldJointDef();
@@ -195,7 +445,7 @@ function init()
         jd.collideConnected = false;
         var j = world.CreateJoint(jd);
         return j;
-    }
+    };
     function attachAxisBody(body1, body2, torque)
     {
         var jd = new b2RevoluteJointDef();
@@ -212,7 +462,7 @@ function init()
         jd.collideConnected = false;
         var j = world.CreateJoint(jd);
         return j;
-    }
+    };
     function createBody(length, height, posx, posy, mass)
     {
         var result;
@@ -234,7 +484,7 @@ function init()
         result.SetMassData(massdata);
 
         return result;
-    }
+    };
     function createCircle(posx, posy, radius, mass)
     {
         var result;
@@ -244,7 +494,7 @@ function init()
         result = world.CreateBody(bd);
 
         var fd = new b2FixtureDef;
-        fd.friction = 1.9;
+        fd.friction = 0.6;
         fd.restitution = 0.3;
         fd.shape = new b2CircleShape(radius);
         result.CreateFixture(fd);
@@ -256,6 +506,54 @@ function init()
 
         return result;
     }
+    function getChunkSize()
+    {
+        var result = 0;
+        var renderSize = getRenderSize();
+        result = renderSize.w / 30;
+        return result;
+    }
+    var   b2Vec2 = Box2D.Common.Math.b2Vec2
+        ,  b2AABB = Box2D.Collision.b2AABB
+        ,	b2BodyDef = Box2D.Dynamics.b2BodyDef
+        ,	b2Body = Box2D.Dynamics.b2Body
+        ,	b2FixtureDef = Box2D.Dynamics.b2FixtureDef
+        ,	b2Fixture = Box2D.Dynamics.b2Fixture
+        ,	b2World = Box2D.Dynamics.b2World
+        ,	b2MassData = Box2D.Collision.Shapes.b2MassData
+        ,	b2PolygonShape = Box2D.Collision.Shapes.b2PolygonShape
+        ,	b2CircleShape = Box2D.Collision.Shapes.b2CircleShape
+        ,	b2DebugDraw = Box2D.Dynamics.b2DebugDraw
+        ,  b2MouseJointDef =  Box2D.Dynamics.Joints.b2MouseJointDef
+        ,  b2DistanceJointDef =  Box2D.Dynamics.Joints.b2DistanceJointDef
+        ,  b2RevoluteJointDef =  Box2D.Dynamics.Joints.b2RevoluteJointDef
+        ,  b2WeldJointDef = Box2D.Dynamics.Joints.b2WeldJointDef
+        ,  b2PrismaticJointDef = Box2D.Dynamics.Joints.b2PrismaticJointDef
+        ;
+
+    var world = new b2World(
+            new b2Vec2(0, 9.8)    //gravity
+            ,  true                 //allow sleep
+            );
+
+
+
+
+    var size = getRenderSize();
+    document.getElementById("canvas").height = size.h;
+    document.getElementById("canvas").width =  size.w;
+    for (var i=0; i<10; i++)
+    {
+        //checkPos(i,i);
+    }
+
+    var chunkSize = getChunkSize();
+    var worldsize = getWorldSize();
+    //createRocks(10,0.2,1, chunkSize*2, -5);
+    var vehicle = createVehicle(3, 0.8, 0.4, 3.5,-4, 80);
+    var chunks = new Array();
+    chunks.push(createGroundSimple(0, chunkSize, 0, 0));
+    updateChunks();
 
     //setup debug draw
     var debugDraw = new b2DebugDraw();
@@ -269,7 +567,7 @@ function init()
     //update
     var date = new Date();
     var virtualClock = date.getTime();
-    var physicsRate = 400;
+    var physicsRate = 200;
     var graphicsRate = 25;
     var simDuration = 0;
     world.DrawDebugData();
@@ -281,165 +579,33 @@ function init()
 
     var mouseX, mouseY, mousePVec, isMouseDown, selectedBody, mouseJoint;
     var canvasPosition = getElementPosition(document.getElementById("canvas"));
+    document.addEventListener("keydown", function(e)
+            {
+            isMouseDown = true;
+            handleKeyDown(e);
+            document.addEventListener("keydown", handleKeyDown, true);
+            }, true);
+    document.addEventListener("keyup", function(e)
+            {
+            isMouseDown = true;
+            handleKeyUp(e);
+            document.addEventListener("keyup", handleKeyUp, true);
+            }, true);
 
-    document.addEventListener("mousedown", function(e) 
+    document.addEventListener("mousedown", function(e)
             {
             isMouseDown = true;
             handleMouseMove(e);
             document.addEventListener("mousemove", handleMouseMove, true);
             }, true);
 
-    document.addEventListener("mouseup", function() 
+    document.addEventListener("mouseup", function()
             {
             document.removeEventListener("mousemove", handleMouseMove, true);
             isMouseDown = false;
             mouseX = undefined;
             mouseY = undefined;
             }, true);
-    function handleMouseMove(e) 
-    {
-        mouseX = (e.clientX - canvasPosition.x) / 30;
-        mouseY = (e.clientY - canvasPosition.y) / 30;
-    };
-
-    function getBodyAtMouse() 
-    {
-        mousePVec = new b2Vec2(mouseX, mouseY);
-        var aabb = new b2AABB();
-        aabb.lowerBound.Set(mouseX - 0.001, mouseY - 0.001);
-        aabb.upperBound.Set(mouseX + 0.001, mouseY + 0.001);
-
-        // Query the world for overlapping shapes.
-
-        selectedBody = null;
-        world.QueryAABB(getBodyCB, aabb);
-        return selectedBody;
-    }
-
-    function getBodyCB(fixture) 
-    {
-        if(fixture.GetBody().GetType() != b2Body.b2_staticBody) 
-        {
-            if(fixture.GetShape().TestPoint(fixture.GetBody().GetTransform(), mousePVec)) 
-            {
-                selectedBody = fixture.GetBody();
-                return false;
-            }
-        }
-        return true;
-    }
-    function stepPhysics(seconds, render)
-    {
-            if (vehicle.body.GetPosition().x > worldsize.x*0.85)
-            {
-                vehicle.engine.SetMotorSpeed(-vehicle.maxspeed);
-            }
-            if (vehicle.body.GetPosition().x < worldsize.x*0.15)
-            {
-                vehicle.engine.SetMotorSpeed(vehicle.maxspeed);
-            }
-            world.Step(seconds, 10, 10);
-
-            if (render)
-            {
-                world.DrawDebugData();
-            }
-            world.ClearForces();
-    }
-
-    function update() 
-    {
-        var date = new Date();
-        var wallClock = date.getTime();
-
-        if(isMouseDown && (!mouseJoint)) 
-        {
-            var body = getBodyAtMouse();
-            if(body) 
-            {
-                var md = new b2MouseJointDef();
-                md.bodyA = world.GetGroundBody();
-                md.bodyB = body;
-                md.target.Set(mouseX, mouseY);
-                md.collideConnected = true;
-                md.maxForce = 300.0 * body.GetMass();
-                mouseJoint = world.CreateJoint(md);
-                body.SetAwake(true);
-            }
-        }
-        if(mouseJoint) 
-        {
-            if(isMouseDown) 
-            {
-                mouseJoint.SetTarget(new b2Vec2(mouseX, mouseY));
-            }
-            else
-            {
-                world.DestroyJoint(mouseJoint);
-                mouseJoint = null;
-            }
-        }
-        var drawn = false;
-        while (wallClock > virtualClock)
-        {
-            stepPhysics(1./physicsRate, !drawn)
-            virtualClock += 1000 / physicsRate;
-            if (!drawn) drawn = true;
-        }
-    };
-    //helpers
-    function getViewSize()
-    {
-        var viewportwidth;
-        var viewportheight;
-        // the more standards compliant browsers (mozilla/netscape/opera/IE7) use window.innerWidth and window.innerHeight
-
-        if (typeof window.innerWidth != 'undefined')
-        {
-            viewportwidth = window.innerWidth, viewportheight = window.innerHeight
-        }
-
-
-        else if (typeof document.documentElement != 'undefined'
-                && typeof document.documentElement.clientWidth !=
-                'undefined' && document.documentElement.clientWidth != 0)
-        {
-            // IE6 in standards compliant mode (i.e. with a valid doctype as the first line in the document)
-            viewportwidth = document.documentElement.clientWidth,
-            viewportheight = document.documentElement.clientHeight
-        }
-        else
-        {
-            // older versions of IE
-            viewportwidth = document.getElementsByTagName('body')[0].clientWidth,
-            viewportheight = document.getElementsByTagName('body')[0].clientHeight
-        }
-        return {w: viewportwidth, h:viewportheight};
-    }
-
-    //http://js-tut.aardon.de/js-tut/tutorial/position.html
-    function getElementPosition(element) 
-    {
-        var elem=element, tagname="", x=0, y=0;
-
-        while((typeof(elem) == "object") && (typeof(elem.tagName) != "undefined")) 
-        {
-            y += elem.offsetTop;
-            x += elem.offsetLeft;
-            tagname = elem.tagName.toUpperCase();
-
-            if(tagname == "BODY")
-                elem=0;
-
-            if(typeof(elem) == "object") 
-            {
-                if(typeof(elem.offsetParent) == "object")
-                    elem = elem.offsetParent;
-            }
-        }
-
-        return {x: x, y: y};
-    }
 
 
 };
