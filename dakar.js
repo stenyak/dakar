@@ -238,11 +238,58 @@ function init()
     {
         return chunks[chunks.length-1];
     }
+    function sanitizeRebound(value, minValue, maxValue)
+    {
+        var result = value;
+        var max = maxValue;
+        var min = minValue;
+        if (minValue > maxValue)
+        {
+            max = minValue;
+            min = maxValue;
+        }
+        if (result > max) result = max - (result - max)/3;
+        if (result < min) result = min + (min - result)/3;
+        return result;
+    }
+    function sanitize(value, minValue, maxValue)
+    {
+        var result = value;
+        var max = maxValue;
+        var min = minValue;
+        if (minValue > maxValue)
+        {
+            max = minValue;
+            min = maxValue;
+        }
+        if (result > max) result = max;
+        if (result < min) result = min;
+        return result;
+    }
     function addChunk()
     {
         var chunkSize = getChunkSize();
         var lastChunk = getLastChunk();
-        var chunk = createGroundSimple(lastChunk.endx, lastChunk.endx+chunkSize, lastChunk.endy, lastChunk.endangle);
+        var speed = Math.abs(vehicle.body.GetLinearVelocity().x);
+        var madMin = 3;
+        //madMin = 0;
+        var madMax = 0.02;
+        var maMin = 10;
+        var maMax = 40;
+        var speedMax = 100 / 3.6;
+        var maxanglediff = madMin+(speed*(madMax-madMin)/speedMax);
+        maxanglediff = sanitizeRebound(maxanglediff, madMin, madMax);
+        var maxangle = maMin+(speed*(maMax-maMin)/speedMax);
+        maxangle = sanitize(maxangle, maMin, maMax);
+        var chunk;
+        if (lastChunk == null)
+        {
+            chunk = createGroundSimple(0, chunkSize, 0, 0, maxanglediff, maxangle);
+        }
+        else
+        {
+            chunk = createGroundSimple(lastChunk.endx, lastChunk.endx+chunkSize, lastChunk.endy, lastChunk.endangle, maxanglediff, maxangle);
+        }
         chunks.push(chunk);
     }
     function updateChunks()
@@ -250,15 +297,20 @@ function init()
         var chunkSize = getChunkSize();
         var curx = vehicle.body.GetPosition().x;
         //console.log("Checking chunks: curx = "+curx);
-        
-        while ( curx > getLastChunk().initx )
+
+        if (getLastChunk() == null)
         {
-            //console.log("Adding chunk due to vehicle position")
             addChunk();
         }
-        while (chunks.length > 3)
+        var desiredNumberOfChunks = Math.ceil(getWorldSize().w / chunkSize) / 2;
+        while ( curx > getLastChunk().initx )
         {
-            //console.log("Removing chunk due to excess")
+            console.log("Adding chunk due to vehicle position")
+            addChunk();
+        }
+        while (chunks.length > desiredNumberOfChunks )
+        {
+            console.log("Removing chunk due to excess")
             var chunk = chunks.shift();
             while (chunk.edges.length > 0)
             {
@@ -267,22 +319,20 @@ function init()
                 //world.DestroyFixture(edge.fixture);
             }
         }
-        while (chunks.length < 3)
+        while (chunks.length < desiredNumberOfChunks)
         {
-            //console.log("Adding chunk due to lack of chunks")
+            console.log("Adding chunk due to lack of chunks")
             addChunk();
         }
     };
-    function getnewangle(oldangle, seed)
+    function getnewangle(oldangle, seed, maxanglediff, maxangle)
     {
         var result = 0;
         Math.seedrandom(seed+2);
-        var maxanglediff = 5;
         var anglediff = -( (Math.random() - 0.5) * 2)* maxanglediff; //up to +/- maxanglediff degrees in difference
+        anglediff += sanitize(anglediff, -maxanglediff, maxanglediff);
         result = oldangle + anglediff;
-        var maxangle = 30; //limit to 30 degrees up or 30 down
-        if (result > maxangle) result = maxangle;
-        if (result < -maxangle) result = -maxangle;
+        result = sanitize(result, -maxangle, maxangle);
         return result;
     };
     function getstepy(stepx, angle)
@@ -292,17 +342,21 @@ function init()
         result = Math.sin(rads) * stepx;
         return result;
     };
-    function createGroundSimple(initx, endx, inity, initangle)
+    function createGroundSimple(initx, endx, inity, initangle, maxanglediff, maxangle)
     {
+        console.log("Creating new ground with mad: " + maxanglediff + " and ma: " + maxangle);
         var x = initx;
         var y = inity;
         var angle = initangle;
         var stepx = (endx - initx) / 100.;
+        stepx = 0.2;
         var edges = new Array();
         while (x < endx)
         {
             var seed = x;
-            angle = getnewangle(angle, seed);
+            var date = new Date();
+            seed = date.getTime();
+            angle = getnewangle(angle, seed, maxanglediff, maxangle);
             var stepy = getstepy(stepx, angle);
             var edge = createEdge(x, y, x+stepx, y+stepy);
             edges.push(edge);
@@ -511,7 +565,7 @@ function init()
         var result = 0;
         var renderSize = getRenderSize();
         result = renderSize.w / 30;
-        return result;
+        return result / 4;
     }
     var   b2Vec2 = Box2D.Common.Math.b2Vec2
         ,  b2AABB = Box2D.Collision.b2AABB
@@ -552,7 +606,6 @@ function init()
     //createRocks(10,0.2,1, chunkSize*2, -5);
     var vehicle = createVehicle(3, 0.8, 0.4, 3.5,-4, 80);
     var chunks = new Array();
-    chunks.push(createGroundSimple(0, chunkSize, 0, 0));
     updateChunks();
 
     //setup debug draw
