@@ -1,3 +1,22 @@
+// QUICK'N'DIRTY DAKAR RALLY SIM IN JS
+// An attempt to clone a very simple Dakar game created in flash that I played some years ago.
+//
+// AUTHOR
+// Written by STenyaK <stenyak@stenyak.com>.
+//
+// COPYRIGHTS
+// This Dakar game is Copyright © 2011 Bruno Gonzalez.
+// License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+// This is free software: you are free to change and redistribute it.
+// There is NO WARRANTY, to the extent permitted by law.
+//
+// seedrandom.js is Copyright © 2011 David Bau
+// box2d.js is Copyright © 2006-2007 Erin Catto
+//
+// REPORTING BUGS
+// This script is known to work on Chromium/Linux.
+// Please report bugs to <stenyak@stenyak.com>.
+
 function init()
 {
     function handleMouseMove(e)
