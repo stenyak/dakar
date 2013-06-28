@@ -40,7 +40,7 @@ function init()
         if (keyArray[keyEnum.right] == true) text += "> ";
         if (keyArray[keyEnum.up] == true) text += "^ ";
         if (keyArray[keyEnum.down] == true) text += "v ";
-        document.getElementById("log").innerHTML = text;
+        document.getElementById("input").innerHTML = text;
     }
     function handleKeyUp(e)
     {
@@ -56,7 +56,7 @@ function init()
         if (keyArray[keyEnum.right] == true) text += "> ";
         if (keyArray[keyEnum.up] == true) text += "^ ";
         if (keyArray[keyEnum.down] == true) text += "v ";
-        document.getElementById("log").innerHTML = text;
+        document.getElementById("input").innerHTML = text;
     }
 
     function onKeyUp()
