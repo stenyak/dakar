@@ -14,8 +14,8 @@
 // box2d.js is Copyright © 2006-2007 Erin Catto
 //
 // REPORTING BUGS
-// This script is known to work on Chromium/Linux.
-// Please report bugs to <stenyak@stenyak.com>.
+// The code is not clean, the game has bugs, physics may explode at any time without prior warning :-)
+// That said, feel free to report bugs (and bugfixes!) to <stenyak@stenyak.com>.
 
 function init()
 {
