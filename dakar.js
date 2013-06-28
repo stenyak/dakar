@@ -168,10 +168,25 @@ function init()
             }
         }
         var drawn = false;
+        var firstDiff = wallClock - virtualClock;
+        var slowdowns = 0;
         while (wallClock > virtualClock)
         {
             stepPhysics(1./physicsRate, !drawn)
             virtualClock += 1000 / physicsRate;
+            wallClock = date.getTime();
+            var newDiff = wallClock - virtualClock;
+            if (firstDiff - newDiff > 100)
+            {
+                slowdowns += 1;
+                document.getElementById("log").innerHTML = "Can't keep up with real time: " + slowdowns;
+                if (slowdowns > 4)
+                {
+                    document.getElementById("log").innerHTML += "<br/>Simulation stopped.";
+                    document.getElementById("log").style.color = "#ff0000";
+                    return;
+                }
+            }
             if (!drawn) drawn = true;
         }
         updating = false;
