@@ -260,11 +260,11 @@ function init()
         result.h /= 30;
         return result;
     };
-    function createRocks (nrocks, size, mass, worldx, worldy)
+    function createRocks (nrocks, size, mass, worldx1, worldx2, worldy)
     {
         while (nrocks > 0)
         {
-            createBody(size, size, Math.random()*worldx, worldy, size );
+            createBody(size, size, worldx1 + (Math.random()*worldx2), worldy, size );
             nrocks -= 1;
         }
     };
@@ -637,7 +637,7 @@ function init()
 
     var chunkSize = getChunkSize();
     var worldsize = getWorldSize();
-    //createRocks(10,0.2,1, chunkSize*2, -5);
+    //createRocks(10, 0.1, 1, 10, chunkSize*2, -5);
     var vehicle = createVehicle(3, 0.8, 0.4, 3.5,-4, 80);
     var chunks = new Array();
     updateChunks();
